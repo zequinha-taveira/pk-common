@@ -26,17 +26,40 @@ class PicoKeyDiscovery:
         pass
 
     def list_devices(self) -> List[PicoKeyDevice]:
-        """List all connected PicoKey devices."""
+        """List and merge all connected PicoKey devices."""
         from .discovery import USBDiscovery
         from .apdu import SmartcardDiscovery
         from .ctap import CTAPDiscovery
         
-        devices = []
-        devices.extend(USBDiscovery.find_all_picokeys())
-        devices.extend(SmartcardDiscovery.find_all_picokeys())
-        devices.extend(CTAPDiscovery.find_all_picokeys())
+        raw_usb = USBDiscovery.find_all_picokeys()
+        raw_sc = SmartcardDiscovery.find_all_picokeys()
+        raw_ctap = CTAPDiscovery.find_all_picokeys()
         
-        return devices
+        merged = {}
+        
+        # Start with USB devices as the base (reliable VID/PID)
+        for dev in raw_usb:
+            key = (dev.vendor_id, dev.product_id, dev.serial_number)
+            merged[key] = dev
+            
+        # Merge Smartcard info
+        for sc_dev in raw_sc:
+            # Try to find a matching USB device
+            match_found = False
+            for key, usb_dev in merged.items():
+                if usb_dev.product_name and "Pico" in sc_dev.product_name:
+                    # In a real tool, we might check reader indices vs USB ports
+                    # For now, if we have one USB Pico and one SC Pico, they are likely the same
+                    usb_dev.path = sc_dev.path # Store the reader path
+                    match_found = True
+                    break
+            
+            if not match_found:
+                key = (0, 0, sc_dev.product_name)
+                merged[key] = sc_dev
+
+        return list(merged.values())
+
 
     def _discover_hid(self) -> List[PicoKeyDevice]:
         """Discover devices using HID backend (FIDO/CTAP)."""
