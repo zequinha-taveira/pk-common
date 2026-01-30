@@ -73,13 +73,26 @@ class OATHModule:
         return sw1 == 0x90 and sw2 == 0x00
 
     def list_accounts(self):
-        """List OATH accounts."""
+        """List OATH accounts and return labels."""
         # INS 0xA1: List
         apdu = [0x00, 0xA1, 0x00, 0x00]
         data, sw1, sw2 = self.transport.transmit(apdu)
+        
+        accounts = []
         if sw1 == 0x90:
-            return data
-        return []
+            i = 0
+            while i < len(data):
+                tag = data[i]
+                length = data[i+1]
+                value = data[i+2 : i+2+length]
+                
+                if tag == 0x71: # Name/Label
+                    label = "".join(chr(c) for c in value)
+                    accounts.append(label)
+                    
+                i += 2 + length
+        return accounts
+
 
 
 

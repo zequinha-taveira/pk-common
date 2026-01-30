@@ -8,16 +8,70 @@ def main():
     parser = argparse.ArgumentParser(description="PicoKey SDK CLI Tool")
     parser.add_argument("--list", action="store_true", help="List all connected PicoKey devices")
     parser.add_argument("--inspect", action="store_true", help="Deeply inspect connected devices and applets")
+    parser.add_argument("--shell", action="store_true", help="Enter interactive APDU shell")
+    parser.add_argument("--verbose", action="store_true", help="Show raw APDU communication")
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
     
     args = parser.parse_args()
     
+    if args.shell:
+        discovery = PicoKeyDiscovery()
+        devices = [d for d in discovery.list_devices() if d.path or d.atr]
+        if not devices:
+            print("No smartcard-capable devices found.")
+            return
+        
+        dev = devices[0]
+        print(f"Entering shell for: {dev.product_name}")
+        from pkcommon.apdu import APDUTransport
+        transport = APDUTransport(dev.path if dev.path else dev.product_name, verbose=True)
+        try:
+            transport.connect()
+            print("Type hex APDU (e.g., '00A4040008A000000527471117') or 'exit'.")
+            while True:
+                line = input("apdu> ").strip().replace(" ", "")
+                if line.lower() in ["exit", "quit"]:
+                    break
+                if not line:
+                    continue
+                try:
+                    apdu = [int(line[i:i+2], 16) for i in range(0, len(line), 2)]
+                    transport.transmit(apdu)
+                except ValueError:
+                    print("Error: Invalid hex string.")
+                except Exception as e:
+                    print(f"Error: {e}")
+            transport.disconnect()
+        except Exception as e:
+            print(f"Connection failed: {e}")
+        return
+
     if args.list or args.inspect:
+
         discovery = PicoKeyDiscovery()
         devices = discovery.list_devices()
         
         if args.json:
-            print(json.dumps([asdict(d) for d in devices], indent=2))
+            json_output = []
+            from pkcommon.apdu import APDUTransport # Moved here for scope
+            from pkcommon.modules import ManagementModule, YubicoModule, OATHModule, OpenPGPModule # Moved here for scope
+            for d in devices:
+                output = asdict(d)
+                if args.inspect and (d.atr or (d.path and "CCID" in d.path)):
+                    transport = APDUTransport(d.path if d.path else d.product_name, verbose=args.verbose)
+                    try:
+                        transport.connect()
+                        output["applets"] = {
+                            "management": ManagementModule(transport).select(),
+                            "otp": YubicoModule(transport).select(),
+                            "oath": OATHModule(transport).select(),
+                            "openpgp": OpenPGPModule(transport).select(),
+                        }
+                        transport.disconnect()
+                    except Exception: # Catch specific exceptions if possible, or log them
+                        output["applets"] = None # Indicate inspection failed for applets
+                json_output.append(output)
+            print(json.dumps(json_output, indent=2))
         else:
             if not devices:
                 print("No PicoKey devices found.")
@@ -35,7 +89,7 @@ def main():
                         from pkcommon.modules import ManagementModule, YubicoModule, OATHModule, OpenPGPModule
                         
                         import time
-                        transport = APDUTransport(d.path if d.path else d.product_name)
+                        transport = APDUTransport(d.path if d.path else d.product_name, verbose=args.verbose)
                         try:
                             transport.connect()
                             
@@ -61,7 +115,11 @@ def main():
                             oath = OATHModule(transport)
                             ok, t = benchmark_select(oath)
                             if ok:
-                                print(f"   [+] OATH: Present ({t:.1f}ms)")
+                                accounts = oath.list_accounts()
+                                acc_str = f" ({len(accounts)} accounts)" if accounts else ""
+                                print(f"   [+] OATH: Present ({t:.1f}ms){acc_str}")
+                                for acc in accounts:
+                                    print(f"       - {acc}")
                                 
                             # Check OpenPGP
                             pgp = OpenPGPModule(transport)
