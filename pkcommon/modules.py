@@ -93,6 +93,62 @@ class OATHModule:
                 i += 2 + length
         return accounts
 
+    def calculate_totp(self, label: str, timestamp: int = None):
+        """Calculate TOTP code for a given account label."""
+        import time
+        if timestamp is None:
+            timestamp = int(time.time() // 30)
+            
+        challenge = timestamp.to_bytes(8, "big")
+        label_bytes = label.encode()
+        
+        # Tag 0x71: Label, Tag 0x74: Challenge
+        data = [0x71, len(label_bytes)] + list(label_bytes) + [0x74, 8] + list(challenge)
+        # INS 0xA2: Calculate
+        apdu = [0x00, 0xA2, 0x00, 0x01, len(data)] + data
+        resp, sw1, sw2 = self.transport.transmit(apdu)
+        
+        if sw1 == 0x90 and len(resp) >= 2:
+            # Response Tag 0x76: Code
+            if resp[0] == 0x76:
+                digits = resp[1] - 1 # First byte of value is digits
+                code_data = resp[2 : 2+digits]
+                # Actually YubiKey returns truncated int
+                val = int.from_bytes(resp[2:], "big") & 0x7FFFFFFF
+                return f"{val % (10**6):06d}"
+        return None
+
+    def calculate_all(self, timestamp: int = None):
+        """Calculate codes for all accounts."""
+        import time
+        if timestamp is None:
+            timestamp = int(time.time() // 30)
+        challenge = timestamp.to_bytes(8, "big")
+        data = [0x74, 8] + list(challenge)
+        # INS 0xA4: Calculate All
+        apdu = [0x00, 0xA4, 0x00, 0x01, len(data)] + data
+        resp, sw1, sw2 = self.transport.transmit(apdu)
+        
+        results = {}
+        if sw1 == 0x90:
+            # Returns sequence of (0x71 label, 0x76 code)
+            i = 0
+            current_label = None
+            while i < len(resp):
+                tag = resp[i]
+                length = resp[i+1]
+                value = resp[i+2 : i+2+length]
+                if tag == 0x71:
+                    current_label = "".join(chr(c) for c in value)
+                elif tag == 0x76:
+                    val = int.from_bytes(value[1:], "big") & 0x7FFFFFFF
+                    code = f"{val % (10**6):06d}"
+                    if current_label:
+                        results[current_label] = code
+                i += 2 + length
+        return results
+
+
 class FIDOModule:
     """Abstraction for FIDO (U2F/FIDO2) functionality via APDU."""
     

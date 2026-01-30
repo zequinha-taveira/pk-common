@@ -115,11 +115,12 @@ def main():
                             oath = OATHModule(transport)
                             ok, t = benchmark_select(oath)
                             if ok:
-                                accounts = oath.list_accounts()
-                                acc_str = f" ({len(accounts)} accounts)" if accounts else ""
+                                codes = oath.calculate_all()
+                                acc_str = f" ({len(codes)} accounts)" if codes else ""
                                 print(f"   [+] OATH: Present ({t:.1f}ms){acc_str}")
-                                for acc in accounts:
-                                    print(f"       - {acc}")
+                                for acc, code in codes.items():
+                                    print(f"       - {acc}: {code}")
+
                                 
                             # Check FIDO2 (APDU)
                             fido = FIDOModule(transport)
