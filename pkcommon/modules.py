@@ -17,13 +17,14 @@ class HSMModule:
 class OpenPGPModule:
     """Abstraction for Pico OpenPGP functionality."""
     
+    AID_PGP = [0xD2, 0x76, 0x00, 0x01, 0x24, 0x01]
+    
     def __init__(self, transport: APDUTransport):
         self.transport = transport
 
-    def select_applet(self):
+    def select(self):
         """Select OpenPGP applet."""
-        # AID for OpenPGP: D2 76 00 01 24 01
-        apdu = [0x00, 0xA4, 0x04, 0x00, 0x06, 0xD2, 0x76, 0x00, 0x01, 0x24, 0x01]
+        apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_PGP)] + self.AID_PGP
         data, sw1, sw2 = self.transport.transmit(apdu)
         return sw1 == 0x90 and sw2 == 0x00
 
@@ -35,9 +36,41 @@ class YubicoModule:
     def __init__(self, transport: APDUTransport):
         self.transport = transport
 
-    def select_otp(self):
+    def select(self):
         """Select Yubico OTP applet."""
         apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_OTP)] + self.AID_OTP
         data, sw1, sw2 = self.transport.transmit(apdu)
         return sw1 == 0x90 and sw2 == 0x00
+
+class ManagementModule:
+    """Abstraction for Yubico Management functionality."""
+    
+    AID_MGMT = [0xA0, 0x00, 0x00, 0x05, 0x27, 0x47, 0x11, 0x17]
+    
+    def __init__(self, transport: APDUTransport):
+        self.transport = transport
+
+    def select(self):
+        """Select Management applet."""
+        apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_MGMT)] + self.AID_MGMT
+        data, sw1, sw2 = self.transport.transmit(apdu)
+        if sw1 == 0x90:
+            return "".join(chr(c) for c in data)
+        return None
+
+class OATHModule:
+    """Abstraction for OATH (TOTP/HOTP) functionality."""
+    
+    AID_OATH = [0xA0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01]
+    
+    def __init__(self, transport: APDUTransport):
+        self.transport = transport
+
+    def select(self):
+        """Select OATH applet."""
+        apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_OATH)] + self.AID_OATH
+        data, sw1, sw2 = self.transport.transmit(apdu)
+        return sw1 == 0x90 and sw2 == 0x00
+
+
 
