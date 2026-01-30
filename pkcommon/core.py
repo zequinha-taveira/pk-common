@@ -11,6 +11,7 @@ class PicoKeyDevice:
     firmware_version: Optional[str] = None
     manufacturer: Optional[str] = None
     path: Optional[str] = None
+    atr: Optional[str] = None
 
     def __repr__(self) -> str:
         return f"PicoKeyDevice(name='{self.product_name}', sn='{self.serial_number}', fw='{self.firmware_version}')"
@@ -51,6 +52,7 @@ class PicoKeyDiscovery:
                     # In a real tool, we might check reader indices vs USB ports
                     # For now, if we have one USB Pico and one SC Pico, they are likely the same
                     usb_dev.path = sc_dev.path # Store the reader path
+                    usb_dev.atr = sc_dev.atr
                     match_found = True
                     break
             

@@ -26,3 +26,18 @@ class OpenPGPModule:
         apdu = [0x00, 0xA4, 0x04, 0x00, 0x06, 0xD2, 0x76, 0x00, 0x01, 0x24, 0x01]
         data, sw1, sw2 = self.transport.transmit(apdu)
         return sw1 == 0x90 and sw2 == 0x00
+
+class YubicoModule:
+    """Abstraction for Yubico-compatible functionality (OTP)."""
+    
+    AID_OTP = [0xA0, 0x00, 0x00, 0x05, 0x27, 0x20, 0x01, 0x01]
+    
+    def __init__(self, transport: APDUTransport):
+        self.transport = transport
+
+    def select_otp(self):
+        """Select Yubico OTP applet."""
+        apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_OTP)] + self.AID_OTP
+        data, sw1, sw2 = self.transport.transmit(apdu)
+        return sw1 == 0x90 and sw2 == 0x00
+

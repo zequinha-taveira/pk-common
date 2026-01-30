@@ -11,14 +11,26 @@ class SmartcardDiscovery:
     def find_all_picokeys() -> List[PicoKeyDevice]:
         devices = []
         try:
+            from .discovery import USBDiscovery
             for reader in readers():
                 # We filter by reader name which often contains the product name
-                if "PicoKey" in reader.name or "Pico Key" in reader.name:
+                if any(s in reader.name for s in USBDiscovery.SUBSTRINGS):
+                    atr = ""
+                    try:
+                        conn = reader.createConnection()
+                        conn.connect()
+                        from smartcard.util import toHexString
+                        atr = toHexString(conn.getATR())
+                        conn.disconnect()
+                    except:
+                        pass
+                        
                     devices.append(PicoKeyDevice(
-                        vendor_id=0, # Not directly accessible via PC/SC easily
+                        vendor_id=0,
                         product_id=0,
                         product_name=reader.name,
-                        path=str(reader)
+                        path=str(reader),
+                        atr=atr
                     ))
         except Exception:
             pass

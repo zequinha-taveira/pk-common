@@ -28,8 +28,9 @@ class USBDiscovery:
         (0x2e8a, 0x10fe): "Pico Key",
         (0x2e8a, 0xcccc): "Pico HSM",
         (0x2e8a, 0xcafe): "Pico FIDO",
-        # Add more VID/PID pairs as needed
     }
+    
+    SUBSTRINGS = ["PicoKey", "Pico Key", "Pol Henarejos"]
     
     @staticmethod
     def find_all_picokeys() -> List[PicoKeyDevice]:
@@ -69,11 +70,11 @@ class USBDiscovery:
                 ))
                 continue
             
-            # Fallback: check manufacturer string for "PicoKey"
+            # Fallback: check manufacturer string for known descriptors
             try:
                 if dev.iManufacturer:
-                    manufacturer = usb.util.get_string(dev, dev.iManufacturer)
-                    if manufacturer and "PicoKey" in manufacturer:
+                    mfr = usb.util.get_string(dev, dev.iManufacturer)
+                    if any(s in mfr for s in USBDiscovery.SUBSTRINGS):
                         product = usb.util.get_string(dev, dev.iProduct) if dev.iProduct else "Unknown"
                         serial = usb.util.get_string(dev, dev.iSerialNumber) if dev.iSerialNumber else None
                         
@@ -82,7 +83,7 @@ class USBDiscovery:
                             product_id=dev.idProduct,
                             serial_number=serial,
                             product_name=product,
-                            manufacturer=manufacturer
+                            manufacturer=mfr
                         ))
             except Exception:
                 continue
