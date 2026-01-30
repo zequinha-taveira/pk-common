@@ -72,5 +72,15 @@ class OATHModule:
         data, sw1, sw2 = self.transport.transmit(apdu)
         return sw1 == 0x90 and sw2 == 0x00
 
+    def list_accounts(self):
+        """List OATH accounts."""
+        # INS 0xA1: List
+        apdu = [0x00, 0xA1, 0x00, 0x00]
+        data, sw1, sw2 = self.transport.transmit(apdu)
+        if sw1 == 0x90:
+            return data
+        return []
+
+
 
 

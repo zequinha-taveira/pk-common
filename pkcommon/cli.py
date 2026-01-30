@@ -34,30 +34,41 @@ def main():
                         from pkcommon.apdu import APDUTransport
                         from pkcommon.modules import ManagementModule, YubicoModule, OATHModule, OpenPGPModule
                         
+                        import time
                         transport = APDUTransport(d.path if d.path else d.product_name)
                         try:
                             transport.connect()
                             
+                            def benchmark_select(mod):
+                                start = time.time()
+                                res = mod.select()
+                                end = time.time()
+                                return res, (end - start) * 1000
+
                             # Check Management
                             mgmt = ManagementModule(transport)
-                            ver = mgmt.select()
+                            ver, t = benchmark_select(mgmt)
                             if ver:
-                                print(f"   [+] Management: Version {ver}")
+                                print(f"   [+] Management: Version {ver} ({t:.1f}ms)")
                             
                             # Check OTP
                             otp = YubicoModule(transport)
-                            if otp.select():
-                                print(f"   [+] OTP: Present")
+                            ok, t = benchmark_select(otp)
+                            if ok:
+                                print(f"   [+] OTP: Present ({t:.1f}ms)")
                                 
                             # Check OATH
                             oath = OATHModule(transport)
-                            if oath.select():
-                                print(f"   [+] OATH: Present")
+                            ok, t = benchmark_select(oath)
+                            if ok:
+                                print(f"   [+] OATH: Present ({t:.1f}ms)")
                                 
                             # Check OpenPGP
                             pgp = OpenPGPModule(transport)
-                            if pgp.select():
-                                print(f"   [+] OpenPGP: Present")
+                            ok, t = benchmark_select(pgp)
+                            if ok:
+                                print(f"   [+] OpenPGP: Present ({t:.1f}ms)")
+
                                 
                             transport.disconnect()
                         except Exception as e:
