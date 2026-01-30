@@ -13,7 +13,7 @@ class SmartcardDiscovery:
         try:
             for reader in readers():
                 # We filter by reader name which often contains the product name
-                if "PicoKey" in reader.name:
+                if "PicoKey" in reader.name or "Pico Key" in reader.name:
                     devices.append(PicoKeyDevice(
                         vendor_id=0, # Not directly accessible via PC/SC easily
                         product_id=0,
