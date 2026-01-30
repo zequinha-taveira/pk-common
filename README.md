@@ -1,0 +1,38 @@
+# pk-common
+
+Open-source, neutral, and stable API for PicoKey devices (HSM, FIDO, OpenPGP).
+
+## Overview
+
+The PicoKey SDK provides low-level, vendor-neutral infrastructure for interacting with PicoKey devices. It is designed for developers and community tools, focusing on technical transparency and stability.
+
+## Features
+
+- **Device Discovery**: Detect and identify PicoKey devices.
+- **Low-level Communication**: Send/receive APDUs for HSM and OpenPGP.
+- **FIDO2/CTAP Support**: Interact with FIDO capabilities.
+- **Vendor Neutral**: Independence from proprietary backends.
+
+## Installation
+
+```bash
+pip install pk-common
+```
+
+## Quick Start
+
+```python
+from pkcommon import PicoKeyDiscovery
+
+discovery = PicoKeyDiscovery()
+devices = discovery.list_devices()
+
+for device in devices:
+    print(f"Device: {device.product_name}")
+    print(f"Serial: {device.serial_number}")
+    print(f"Firmware: {device.firmware_version}")
+```
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
