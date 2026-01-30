@@ -23,7 +23,9 @@ def main():
             else:
                 print(f"Found {len(devices)} device(s):")
                 for d in devices:
-                    print(f" - [{d.product_name}] SN: {d.serial_number or 'N/A'} (Path: {d.path})")
+                    vid_pid = f"{d.vendor_id:04x}:{d.product_id:04x}"
+                    sn = d.serial_number or "N/A"
+                    print(f" - [{d.product_name}] VID:PID={vid_pid} SN={sn}")
     else:
         parser.print_help()
 
