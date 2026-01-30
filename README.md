@@ -21,6 +21,7 @@ pip install pk-common
 
 ## Quick Start
 
+### Library Usage
 ```python
 from pkcommon import PicoKeyDiscovery
 
@@ -29,9 +30,16 @@ devices = discovery.list_devices()
 
 for device in devices:
     print(f"Device: {device.product_name}")
-    print(f"Serial: {device.serial_number}")
-    print(f"Firmware: {device.firmware_version}")
+    print(f"ATR: {device.atr}")
 ```
+
+### CLI Usage
+- **List devices**: `python -m pkcommon.cli --list`
+- **Deep Inspection**: `python -m pkcommon.cli --inspect`
+- **APDU Shell**: `python -m pkcommon.cli --shell`
+- **JSON Output**: `python -m pkcommon.cli --inspect --json`
+- **Verbose Mode**: `python -m pkcommon.cli --inspect --verbose`
+
 
 ## License
 
