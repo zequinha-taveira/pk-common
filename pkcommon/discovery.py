@@ -61,12 +61,24 @@ class USBDiscovery:
                 except Exception:
                     pass  # Use defaults if access denied
                 
+                # Check for vendor interface
+                has_vendor = False
+                try:
+                    for cfg in dev:
+                        for itf in cfg:
+                            if itf.bInterfaceClass == 255:
+                                has_vendor = True
+                                break
+                except:
+                    pass
+
                 devices.append(PicoKeyDevice(
                     vendor_id=dev.idVendor,
                     product_id=dev.idProduct,
                     serial_number=serial,
                     product_name=product_name,
-                    manufacturer=manufacturer
+                    manufacturer=manufacturer,
+                    has_vendor_interface=has_vendor
                 ))
                 continue
             

@@ -86,7 +86,7 @@ def main():
                     
                     if args.inspect and (d.atr or (d.path and "CCID" in d.path)):
                         from pkcommon.apdu import APDUTransport
-                        from pkcommon.modules import ManagementModule, YubicoModule, OATHModule, OpenPGPModule
+                        from pkcommon.modules import ManagementModule, YubicoModule, OATHModule, OpenPGPModule, FIDOModule
                         
                         import time
                         transport = APDUTransport(d.path if d.path else d.product_name, verbose=args.verbose)
@@ -121,6 +121,16 @@ def main():
                                 for acc in accounts:
                                     print(f"       - {acc}")
                                 
+                            # Check FIDO2 (APDU)
+                            fido = FIDOModule(transport)
+                            try:
+                                ok, t = benchmark_select(fido)
+                                if ok:
+                                    print(f"   [+] FIDO2 (SC): Present ({t:.1f}ms)")
+                            except Exception as e:
+                                if "Acesso negado" in str(e):
+                                    print(f"   [!] FIDO2 (SC): Active but blocked by OS")
+                                
                             # Check OpenPGP
                             pgp = OpenPGPModule(transport)
                             ok, t = benchmark_select(pgp)
@@ -131,6 +141,10 @@ def main():
                             transport.disconnect()
                         except Exception as e:
                             print(f"   [!] Inspection failed: {e}")
+                    
+                    if d.has_vendor_interface:
+                        print(f"   [*] Vendor Interface: Detected (Class 255)")
+
     else:
         parser.print_help()
 

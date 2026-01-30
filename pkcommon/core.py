@@ -12,6 +12,7 @@ class PicoKeyDevice:
     manufacturer: Optional[str] = None
     path: Optional[str] = None
     atr: Optional[str] = None
+    has_vendor_interface: bool = False
 
     def __repr__(self) -> str:
         return f"PicoKeyDevice(name='{self.product_name}', sn='{self.serial_number}', fw='{self.firmware_version}')"
@@ -53,6 +54,7 @@ class PicoKeyDiscovery:
                     # For now, if we have one USB Pico and one SC Pico, they are likely the same
                     usb_dev.path = sc_dev.path # Store the reader path
                     usb_dev.atr = sc_dev.atr
+                    # has_vendor_interface is already set from USB discovery
                     match_found = True
                     break
             

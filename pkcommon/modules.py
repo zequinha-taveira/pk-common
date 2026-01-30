@@ -71,7 +71,7 @@ class OATHModule:
         apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_OATH)] + self.AID_OATH
         data, sw1, sw2 = self.transport.transmit(apdu)
         return sw1 == 0x90 and sw2 == 0x00
-
+        
     def list_accounts(self):
         """List OATH accounts and return labels."""
         # INS 0xA1: List
@@ -92,6 +92,37 @@ class OATHModule:
                     
                 i += 2 + length
         return accounts
+
+class FIDOModule:
+    """Abstraction for FIDO (U2F/FIDO2) functionality via APDU."""
+    
+    AID_FIDO = [0xA0, 0x00, 0x00, 0x06, 0x47, 0x2F, 0x00, 0x01]
+    
+    def __init__(self, transport: APDUTransport):
+        self.transport = transport
+
+    def select(self):
+        """Select FIDO applet."""
+        apdu = [0x00, 0xA4, 0x04, 0x00, len(self.AID_FIDO)] + self.AID_FIDO
+        data, sw1, sw2 = self.transport.transmit(apdu)
+        return sw1 == 0x90 and sw2 == 0x00
+
+class RescueModule:
+    """Abstraction for Vendor/Rescue interface functionality."""
+    
+    def __init__(self, transport):
+        self.transport = transport # VendorTransport
+
+    def ping(self):
+        """Send a ping to the rescue interface."""
+        try:
+            # Pol Henarejos firmware often uses 0x00 or something similar
+            # This is experimental.
+            self.transport.send([0x00])
+            return True
+        except:
+            return False
+
 
 
 
