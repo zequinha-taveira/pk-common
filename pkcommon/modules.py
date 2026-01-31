@@ -180,6 +180,14 @@ class OATHModule:
         resp, sw1, sw2 = self.transport.transmit(apdu)
         return sw1 == 0x90
 
+    def reset(self):
+        """Factory reset OATH applet (destroys all accounts)."""
+        # INS 0x05: Reset
+        apdu = [0x00, 0x05, 0xDE, 0xAD] # Standard Yubico OATH reset parameters
+        resp, sw1, sw2 = self.transport.transmit(apdu)
+        return sw1 == 0x90
+
+
 
 class FIDOModule:
     """Abstraction for FIDO (U2F/FIDO2) functionality via APDU."""

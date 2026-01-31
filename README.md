@@ -37,8 +37,16 @@ for device in devices:
 - **List devices**: `python -m pkcommon.cli --list`
 - **Deep Inspection**: `python -m pkcommon.cli --inspect`
 - **APDU Shell**: `python -m pkcommon.cli --shell`
+- **Device Monitor**: `python -m pkcommon.cli --monitor`
+- **OATH Gestão**:
+  - Listar: `python -m pkcommon.cli --oath-list`
+  - Adicionar: `python -m pkcommon.cli --oath-add "Label" "SECRET"`
+  - Deletar: `python -m pkcommon.cli --oath-delete "Label"`
+  - Reset: `python -m pkcommon.cli --oath-reset`
+- **FIDO2 Info**: `python -m pkcommon.cli --fido-info`
 - **JSON Output**: `python -m pkcommon.cli --inspect --json`
 - **Verbose Mode**: `python -m pkcommon.cli --inspect --verbose`
+
 
 
 ## License

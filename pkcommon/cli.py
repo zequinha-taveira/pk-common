@@ -13,7 +13,10 @@ def main():
     parser.add_argument("--oath-add", nargs=2, metavar=("LABEL", "SECRET"), help="Add OATH TOTP account")
     parser.add_argument("--oath-delete", metavar="LABEL", help="Delete OATH account")
     parser.add_argument("--oath-list", action="store_true", help="List OATH account labels")
+    parser.add_argument("--oath-reset", action="store_true", help="Factory reset OATH applet (destroys all data)")
+    parser.add_argument("--fido-info", action="store_true", help="Show FIDO2/CTAP2 device information")
     parser.add_argument("--verbose", action="store_true", help="Show raw APDU communication")
+
 
 
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
@@ -76,7 +79,7 @@ def main():
             print("\nMonitoring stopped.")
         return
 
-    if args.oath_add or args.oath_delete or args.oath_list:
+    if args.oath_add or args.oath_delete or args.oath_list or args.oath_reset:
         discovery = PicoKeyDiscovery()
         devices = [d for d in discovery.list_devices() if d.path or d.atr]
         if not devices:
@@ -101,7 +104,6 @@ def main():
                     print(f" - {acc}")
 
             if args.oath_add:
-
                 label, secret = args.oath_add
                 if oath.put_account(label, secret):
                     print(f"Successfully added account: {label}")
@@ -114,11 +116,47 @@ def main():
                     print(f"Successfully deleted account: {label}")
                 else:
                     print(f"Failed to delete account: {label}")
+
+            if args.oath_reset:
+                confirm = input("Are you sure you want to reset the OATH applet? All accounts will be lost! [y/N]: ")
+                if confirm.lower() == 'y':
+                    if oath.reset():
+                        print("Successfully reset OATH applet.")
+                    else:
+                        print("Failed to reset OATH applet.")
                     
             transport.disconnect()
         except Exception as e:
             print(f"OATH Operation failed: {e}")
         return
+
+    if args.fido_info:
+        from pkcommon.ctap import CTAPDiscovery, CTAPModule
+        devices = CTAPDiscovery.find_all_picokeys()
+        if not devices:
+            print("No PicoKey FIDO devices found.")
+            return
+        
+        # We need the actual CtapHidDevice for CTAPModule
+        from fido2.hid import CtapHidDevice
+        hid_devs = list(CtapHidDevice.list_devices())
+        if not hid_devs:
+            print("No HID devices accessible.")
+            return
+            
+        print(f"FIDO2/CTAP2 Information for {len(hid_devs)} device(s):")
+        for dev in hid_devs:
+            try:
+                mod = CTAPModule(dev)
+                caps = mod.get_capabilities()
+                print(f" - Device: {dev.descriptor.product_name} ({dev.descriptor.path})")
+                print(f"   Versions: {', '.join(caps['versions'])}")
+                print(f"   Extensions: {', '.join(caps['extensions'])}")
+                print(f"   Options: rk={caps['rk']}, up={caps['up']}, uv={caps['uv']}, plat={caps['plat']}")
+            except Exception as e:
+                print(f"   [!] Failed to get info: {e}")
+        return
+
 
 
     if args.list or args.inspect:
@@ -220,6 +258,21 @@ def main():
                     
                     if d.has_vendor_interface:
                         print(f"   [*] Vendor Interface: Detected (Class 255)")
+
+                    # Check for FIDO HID info if it's a FIDO-capable device
+                    from fido2.hid import CtapHidDevice
+                    for hid_dev in CtapHidDevice.list_devices():
+                        if hid_dev.descriptor.vendor_id == d.vendor_id and hid_dev.descriptor.product_id == d.product_id:
+                            try:
+                                from pkcommon.ctap import CTAPModule
+                                mod = CTAPModule(hid_dev)
+                                caps = mod.get_capabilities()
+                                print(f"   [+] FIDO2 (HID): Protocol {', '.join(caps['versions'])}")
+                                print(f"       Options: rk={caps['rk']}, up={caps['up']}, uv={caps['uv']}, plat={caps['plat']}")
+                                break # Found the matching HID side
+                            except:
+                                pass
+
 
     else:
         parser.print_help()
