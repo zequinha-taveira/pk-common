@@ -12,7 +12,9 @@ def main():
     parser.add_argument("--monitor", action="store_true", help="Monitor for device connections/disconnections")
     parser.add_argument("--oath-add", nargs=2, metavar=("LABEL", "SECRET"), help="Add OATH TOTP account")
     parser.add_argument("--oath-delete", metavar="LABEL", help="Delete OATH account")
+    parser.add_argument("--oath-list", action="store_true", help="List OATH account labels")
     parser.add_argument("--verbose", action="store_true", help="Show raw APDU communication")
+
 
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
     
@@ -74,7 +76,7 @@ def main():
             print("\nMonitoring stopped.")
         return
 
-    if args.oath_add or args.oath_delete:
+    if args.oath_add or args.oath_delete or args.oath_list:
         discovery = PicoKeyDiscovery()
         devices = [d for d in discovery.list_devices() if d.path or d.atr]
         if not devices:
@@ -92,7 +94,14 @@ def main():
                 print("Failed to select OATH applet.")
                 return
             
+            if args.oath_list:
+                accounts = oath.list_accounts()
+                print(f"OATH Accounts ({len(accounts)}):")
+                for acc in accounts:
+                    print(f" - {acc}")
+
             if args.oath_add:
+
                 label, secret = args.oath_add
                 if oath.put_account(label, secret):
                     print(f"Successfully added account: {label}")
