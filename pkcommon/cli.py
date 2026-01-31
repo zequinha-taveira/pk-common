@@ -9,7 +9,11 @@ def main():
     parser.add_argument("--list", action="store_true", help="List all connected PicoKey devices")
     parser.add_argument("--inspect", action="store_true", help="Deeply inspect connected devices and applets")
     parser.add_argument("--shell", action="store_true", help="Enter interactive APDU shell")
+    parser.add_argument("--monitor", action="store_true", help="Monitor for device connections/disconnections")
+    parser.add_argument("--oath-add", nargs=2, metavar=("LABEL", "SECRET"), help="Add OATH TOTP account")
+    parser.add_argument("--oath-delete", metavar="LABEL", help="Delete OATH account")
     parser.add_argument("--verbose", action="store_true", help="Show raw APDU communication")
+
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
     
     args = parser.parse_args()
@@ -45,6 +49,68 @@ def main():
         except Exception as e:
             print(f"Connection failed: {e}")
         return
+
+    if args.monitor:
+        import time
+        discovery = PicoKeyDiscovery()
+        last_devs = {}
+        print("Monitoring for PicoKey devices... (Press Ctrl+C to stop)")
+        try:
+            while True:
+                devs = discovery.list_devices()
+                current_keys = { (d.vendor_id, d.product_id, d.serial_number): d.product_name for d in devs }
+                
+                new_keys = set(current_keys.keys()) - set(last_devs.keys())
+                removed_keys = set(last_devs.keys()) - set(current_keys.keys())
+                
+                for k in new_keys:
+                    print(f"[+] Connected: {current_keys[k]} (VID:PID={k[0]:04x}:{k[1]:04x} SN={k[2] or 'N/A'})")
+                for k in removed_keys:
+                    print(f"[-] Disconnected: {last_devs[k]} (VID:PID={k[0]:04x}:{k[1]:04x} SN={k[2] or 'N/A'})")
+                
+                last_devs = current_keys
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nMonitoring stopped.")
+        return
+
+    if args.oath_add or args.oath_delete:
+        discovery = PicoKeyDiscovery()
+        devices = [d for d in discovery.list_devices() if d.path or d.atr]
+        if not devices:
+            print("No smartcard-capable devices found.")
+            return
+        
+        dev = devices[0]
+        from pkcommon.apdu import APDUTransport
+        from pkcommon.modules import OATHModule
+        transport = APDUTransport(dev.path if dev.path else dev.product_name, verbose=args.verbose)
+        try:
+            transport.connect()
+            oath = OATHModule(transport)
+            if not oath.select():
+                print("Failed to select OATH applet.")
+                return
+            
+            if args.oath_add:
+                label, secret = args.oath_add
+                if oath.put_account(label, secret):
+                    print(f"Successfully added account: {label}")
+                else:
+                    print(f"Failed to add account: {label}")
+            
+            if args.oath_delete:
+                label = args.oath_delete
+                if oath.delete_account(label):
+                    print(f"Successfully deleted account: {label}")
+                else:
+                    print(f"Failed to delete account: {label}")
+                    
+            transport.disconnect()
+        except Exception as e:
+            print(f"OATH Operation failed: {e}")
+        return
+
 
     if args.list or args.inspect:
 

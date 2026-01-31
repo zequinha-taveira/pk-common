@@ -148,6 +148,38 @@ class OATHModule:
                 i += 2 + length
         return results
 
+    def put_account(self, label: str, secret_b32: str, alg: int = 0x01, digits: int = 6):
+        """Add an OATH account. secret_b32 is the Base32 encoded secret."""
+        import base64
+        # Clean secret and add padding if missing
+        secret_b32 = secret_b32.strip().upper().replace(" ", "")
+        secret_b32 += "=" * ((8 - len(secret_b32) % 8) % 8)
+        try:
+            secret = base64.b32decode(secret_b32)
+        except Exception as e:
+            raise ValueError(f"Invalid Base32 secret: {e}")
+            
+        label_bytes = label.encode()
+        # Tags: 0x71 (Label), 0x73 (Secret), 0x74 (Type), 0x75 (Algorithm)
+        data = [0x71, len(label_bytes)] + list(label_bytes)
+        data += [0x74, 1, 0x20 | digits]
+        data += [0x75, 1, alg]
+        data += [0x73, len(secret)] + list(secret)
+        
+        # INS 0x01: Put
+        apdu = [0x00, 0x01, 0x00, 0x00, len(data)] + data
+        resp, sw1, sw2 = self.transport.transmit(apdu)
+        return sw1 == 0x90
+
+    def delete_account(self, label: str):
+        """Delete an OATH account."""
+        label_bytes = label.encode()
+        data = [0x71, len(label_bytes)] + list(label_bytes)
+        # INS 0x02: Delete
+        apdu = [0x00, 0x02, 0x00, 0x00, len(data)] + data
+        resp, sw1, sw2 = self.transport.transmit(apdu)
+        return sw1 == 0x90
+
 
 class FIDOModule:
     """Abstraction for FIDO (U2F/FIDO2) functionality via APDU."""
